@@ -1,146 +1,141 @@
 ## 1 задание 
 
-Вывести из таблицы `ratings`:
-
-- значение поля `avg_rating`, умноженное на 100;
-- ближайшее большее целое поля `avg_rating`;
-- ближайшее меньшее целое поля `avg_rating`;
-- округлённое значение поля `vote_cnt`, делённого на 1000.
+Написать SQL-запрос, который находит строку в таблице `persons` с именем Дженна Ортега (Jenna Ortega).
+Поля в запросе: `name`, `year_of_birth`, `year_of_death`, `professions`.
 
 ```sql
-SELECT avg_rating * 100 AS column_1,
-    ceil(avg_rating) AS column_2,
-    floor(avg_rating) AS column_3,
-    round(vote_cnt / 1000) AS column_4
-FROM ratings;
+SELECT
+  name,
+  year_of_birth,
+  year_of_death,
+  professions
+FROM
+  persons
+WHERE
+  name = 'Jenna Ortega'; 
 ```
-## 2 задание 
 
-Вывести:
+## 2 задание
 
-- поле `run_time` из таблицы `titles`;
-- количество полных часов без минут, указанных в поле `run_time` (назвать это поле `hours`).
+Написать SQL-запрос, который найдет в таблице `titles` строки, в которых в названии `(original_title)` указано `Wednesday`.
 
 ```sql
-SELECT run_time,
-       run_time/60 as hours
-FROM   titles;
+SELECT *
+FROM
+  titles
+WHERE 
+  original_title = 'Wednesday';
 ```
 
 ## 3 задание 
 
-Вывести:
-
-- поле `name` из таблицы `persons`;
-- количество символов в поле `name` (назвать это поле `len`);
-- поле `name`, переведённое в верхний регистр (назвать это поле `up`);
-- номер символа с первым вхождением буквы `a` (назвать это поле `a_pos`).
+Написать SQL-запрос, который вернёт имя `(name)`, год рождения `(year_of_birth)`, год смерти `(year_of_death)` и профессию `(professions)` из таблицы `persons`, умерших в 2022г с профессией `actor` или `actress`.
+Pезультат отсортируйте по возрастанию name, year_of_birth, year_of_death, professions.
 
 ```sql
 SELECT name,
-       length(name) as len,
-       upper(name) as up,
-       position('a' in name) as a_pos
-FROM   persons;
+       year_of_birth,
+       year_of_death,
+       professions
+FROM   persons
+WHERE  year_of_death = 2022
+   and professions in ('actor', 'actress')
+ORDER BY 1, 2, 3, 4;
 ```
 
 ## 4 задание 
 
-Написать SQL-запрос, который составит поле вида `name` — `professions` из таблицы `persons`. 
-Назвать результирующее поле `about`.
+Написать SQL-запрос, который вернёт имя `(name)`, год рождения `(year_of_birth)`, год смерти `(year_of_death)` и профессию `(professions)` из таблицы `persons`,  родившихся в 2000 г., с именем, начинающимся с `Y`.
+Результат отсортируйте по возрастанию name, year_of_birth, year_of_death, professions
 
 ```sql
-SELECT concat(name, ' - ', professions) as about
-FROM   persons;
+SELECT name, year_of_birth, year_of_death, professions
+FROM persons
+WHERE year_of_birth = 2000
+AND name LIKE 'Y%'
+ORDER BY 1,2,3,4;
 ```
 
 ## 5 задание 
 
-Вывести из таблицы `persons`:
-
-- имя;
-- год текущей даты (назовите его `year`);
-- год рождения (полe `year_of_birth`).
+Написать SQL-запрос, который вернёт топ-10 строк с максимальным количеством голосов `(vote_cnt)` из таблицы рейтингов `ratings`. 
 
 ```sql
-SELECT 
-    name, 
-    extract(year from now()) as year,
-    year_of_birth
-FROM persons;
+SELECT *
+FROM ratings
+ORDER BY vote_cnt DESC 
+LIMIT 10;
 ```
 
 ## 6 задание 
 
-Написать SQL-запрос, который выводит:
-
-- количество лет, прошедших с выхода произведения (поле `year_of_start` таблицы `titles`) до текущего года (назвать поле `years`).
+Написать SQL-запрос, который вернёт сотую строку в топе с максимальным количеством голосом `(vote_cnt)` из таблицы рейтингов `ratings`. 
 
 ```sql
-SELECT 
-    EXTRACT(YEAR FROM NOW()) - year_of_start AS years
-FROM titles;
+SELECT *
+FROM ratings
+ORDER BY vote_cnt DESC 
+OFFSET 99 LIMIT 1;
 ```
 
 ## 7 задание 
 
-Написать SQL-запрос, который выводит:
-
-- поле `popular_title` из таблицы `titles`;
-- поле `original_title` из таблицы `titles`;
-- флаг, одинаковы ли эти значения (назовите его `title_equality`);
-- флаг, принимающий значение True, если длина первого поля больше длины второго поля (назовите его `title_over`).
+Написать SQL-запрос, который вернёт имя `(name)`, год рождения `(year_of_birth)`, год смерти `(year_of_death)` и профессию `(professions)` из таблицы `persons`, всех родившихся в 1990г и уже умерших.
+Результат отсортируйте по возрастанию name, year_of_birth, year_of_death, professions.
 
 ```sql
-SELECT 
-    popular_title,
-    original_title,
-    popular_title = original_title AS title_equality,
-    length(popular_title) > length(original_title) AS title_over
-FROM titles;
+SELECT name,
+       year_of_birth,
+       year_of_death,
+       professions
+FROM   persons
+WHERE  year_of_birth = 1990
+   and year_of_death is not null
+ORDER BY 1, 2, 3, 4;
 ```
 
 ## 8 задание 
 
-Вывести:
-
-- имя из таблицы `persons`;
-- если год рождения больше или равен 2000, то значение 'young', иначе значение 'old'. Присвоить расчетному полю имя `age_group`
+Написать SQL-запрос, который вернёт имя `(name)`, год рождения `(year_of_birth)`, год смерти `(year_of_death)` и профессию `(professions)`  из таблицы `persons` всех у кого не указан год рождения и год смерти.
+Результат отсортируйте по возрастанию name, year_of_birth, year_of_death, professions.
 
 ```sql
-SELECT 
-    name,
-    CASE WHEN year_of_birth >= 2000 THEN 'young'
-            ELSE 'old' END AS age_group
-FROM persons;
+SELECT name,
+       year_of_birth,
+       year_of_death,
+       professions
+FROM   persons
+WHERE  year_of_birth is null
+   and year_of_death is null
+ORDER BY 1, 2, 3, 4;
 ```
 
 ## 9 задание 
 
-Вывести:
-
-- поле `id` из таблицы `titles`;
-- номер символа с первым вхождением цифры 6 в поле `id` из таблицы `titles` (назовите поле `pos_numb`).
+Написать SQL-запрос, который вернёт имя `(name)`, год рождения `(year_of_birth)`, год смерти `(year_of_death)` и профессию `(professions)`  из таблицы `persons` всех родившихся в 2000г. При этом если человек не умер — замените NULL в поле `year_of_death` строкой `alive` (назовите поле также, как исходное — `year_of_death`).
+Результат отсортируйте по возрастанию name, year_of_birth, year_of_death, professions.
 
 ```sql
-SELECT 
-    id,
-    position('6' in id::text) as pos_numb
-FROM titles;
+SELECT name,
+       year_of_birth,
+       professions,
+       COALESCE(year_of_death::TEXT, 'alive') AS year_of_death
+FROM   persons
+WHERE year_of_birth = 2000 
+ORDER BY 1, 2, 3, 4;
 ```
 
 ## 10 задание 
 
-Вывести:
-
-- поле `original_title`;
-- поле `is_adult`;
-- поле `is_adult`, приведённое к целочисленному типу (назовите его `is_adult_int`).
+Написать запрос, который вернёт имя `(name)`, возраст `(age)`, приведенный к целочисленному типу, и профессию `(professions)`  из таблицы `persons`, с профессией `(profession)` `actor` или `actress`, у которых указан год рождения `(year_of_birth)`. При этом если год смерти `(year_of_death)` не указан — необходимо заменить его на текущий.
+Результат отсортируйте по возрастанию name, age, professions
 
 ```sql
-SELECT
-    original_title,
-    is_adult,
-    is_adult::int as is_adult_int
-FROM titles;
+SELECT name,
+       coalesce(year_of_death, date_part('year', now())::int) - year_of_birth as age,
+       professions
+FROM   persons
+WHERE  professions in ('actor', 'actress')
+   and year_of_birth is not null
+ORDER BY 1, 2, 3;
 ```
