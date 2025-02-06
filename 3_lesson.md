@@ -1,146 +1,152 @@
 ## 1 задание 
 
-Вывести из таблицы `ratings`:
+Написать SQL-запрос, который выберет все уникальные значения поля `type` из таблицы `titles`. 
 
-- значение поля `avg_rating`, умноженное на 100;
-- ближайшее большее целое поля `avg_rating`;
-- ближайшее меньшее целое поля `avg_rating`;
-- округлённое значение поля `vote_cnt`, делённого на 1000.
+Результат отсортируйте по возрастанию `type`.
 
 ```sql
-SELECT avg_rating * 100 AS column_1,
-    ceil(avg_rating) AS column_2,
-    floor(avg_rating) AS column_3,
-    round(vote_cnt / 1000) AS column_4
-FROM ratings;
+SELECT DISTINCT type
+FROM   titles
+ORDER BY 1;
 ```
+
 ## 2 задание 
 
-Вывести:
+Написать SQL-запрос, который выберет все уникальные пары значений полей `type` и `genres` из таблицы `titles`. 
 
-- поле `run_time` из таблицы `titles`;
-- количество полных часов без минут, указанных в поле `run_time` (назвать это поле `hours`).
+Результат отсортируйте по возрастанию `type` и `genres`.
 
 ```sql
-SELECT run_time,
-       run_time/60 as hours
-FROM   titles;
+SELECT DISTINCT type,
+                genres
+FROM   titles
+ORDER BY 1, 2;
 ```
 
 ## 3 задание 
 
-Вывести:
+Написать SQL-запрос, который объединит в себе два запроса в одно поле с именем `role`:
 
-- поле `name` из таблицы `persons`;
-- количество символов в поле `name` (назвать это поле `len`);
-- поле `name`, переведённое в верхний регистр (назвать это поле `up`);
-- номер символа с первым вхождением буквы `a` (назвать это поле `a_pos`).
+- все уникальные категории из таблицы `principals`;
+- все уникальные профессии из таблицы `persons` за исключением тех, в которых есть запятая.
+  
+Результат отсортируйте в лексикографическом порядке.
 
 ```sql
-SELECT name,
-       length(name) as len,
-       upper(name) as up,
-       position('a' in name) as a_pos
-FROM   persons;
+SELECT DISTINCT category as role
+FROM   principals
+UNION all
+SELECT DISTINCT professions
+FROM   persons
+WHERE  professions not like '%,%'
+ORDER BY 1;
 ```
 
 ## 4 задание 
 
-Написать SQL-запрос, который составит поле вида `name` — `professions` из таблицы `persons`. 
-Назвать результирующее поле `about`.
+Проведите дедупликацию в запросе из предыдущего задания.
 
 ```sql
-SELECT concat(name, ' - ', professions) as about
-FROM   persons;
+SELECT DISTINCT category as role
+FROM   principals
+UNION
+SELECT DISTINCT professions
+FROM   persons
+WHERE  professions not like '%,%'
+ORDER BY role;
 ```
 
 ## 5 задание 
 
-Вывести из таблицы `persons`:
+Написать SQL-запрос, который объединит таблицы `titles` и `ratings`. Выведите поля:
 
-- имя;
-- год текущей даты (назовите его `year`);
-- год рождения (полe `year_of_birth`).
+- `original_title` из таблицы `titles`;
+- `type` из таблицы `titles`;
+- `year_of_start` из таблицы `titles`;
+- `avg_rating` из таблицы `ratings`;
+- `vote_cnt` из таблицы `ratings`.
+
+Результат отсортируйте по возрастанию original_title, type, year_of_start, avg_rating.
 
 ```sql
-SELECT 
-    name, 
-    extract(year from now()) as year,
-    year_of_birth
-FROM persons;
+SELECT t.original_title,
+       t.type,
+       t.year_of_start,
+       r.avg_rating,
+       r.vote_cnt
+FROM   titles as t join ratings as r
+        ON t.id = r.title_id
+ORDER BY 1, 2, 3, 4;
 ```
 
 ## 6 задание 
 
-Написать SQL-запрос, который выводит:
+Написать SQL-запрос, который выведет поле `title_id` тех строк из таблицы `ratings`, для которых нет соответствия в таблице `titles`. 
 
-- количество лет, прошедших с выхода произведения (поле `year_of_start` таблицы `titles`) до текущего года (назвать поле `years`).
+Результат отсортируйте в порядке убывания.
 
 ```sql
-SELECT 
-    EXTRACT(YEAR FROM NOW()) - year_of_start AS years
-FROM titles;
+SELECT r.title_id
+FROM   ratings as r
+    LEFT JOIN titles as t
+        ON t.id = r.title_id
+WHERE  t.original_title is null
+ORDER BY title_id desc;
 ```
 
 ## 7 задание 
 
-Написать SQL-запрос, который выводит:
+Написать SQL-запрос, который находит произведения с типом `movie`, у которых есть клоны с таким же `original_title`. Для этого объедините таблицу `titles` с собой по названию произведения, исключив строки, которые поджойнились сами на себя.
 
-- поле `popular_title` из таблицы `titles`;
-- поле `original_title` из таблицы `titles`;
-- флаг, одинаковы ли эти значения (назовите его `title_equality`);
-- флаг, принимающий значение True, если длина первого поля больше длины второго поля (назовите его `title_over`).
+Поля к выводу:
+
+- `original_title`;
+- `type` оригинала (с алиасом `type_1`);
+- `type` клона (с алиасом `type_2`);
+- `year_of_start` оригинала (с алиасом `year_of_start_1`);
+- `year_of_start` клона (с алиасом `year_of_start_2`).
+
+Результат отсортируйте по возрастанию original_title, type_1, type_2, year_of_start_1, year_of_start_2
 
 ```sql
-SELECT 
-    popular_title,
-    original_title,
-    popular_title = original_title AS title_equality,
-    length(popular_title) > length(original_title) AS title_over
-FROM titles;
+SELECT t1.original_title,
+       t1.type as type_1,
+       t2.type as type_2,
+       t1.year_of_start as year_of_start_1,
+       t2.year_of_start as year_of_start_2
+FROM   titles as t1 join titles as t2
+        ON t1.original_title = t2.original_title and
+           t1.id != t2.id and
+           t1.type = 'movie'
+ORDER BY 1, 2, 3, 4, 5;
 ```
 
 ## 8 задание 
 
-Вывести:
-
-- имя из таблицы `persons`;
-- если год рождения больше или равен 2000, то значение 'young', иначе значение 'old'. Присвоить расчетному полю имя `age_group`
+Написать SQL-запрос, который объединяет таблицы `titles` и `ratings` и выводит поля `original_title` и `year_of_start` из таблицы `titles` и `vote_cnt` из таблицы `ratings` в порядке убывания `vote_cnt`. Выберите только те записи, у которых средний рейтинг `(avg_rating)` равен 10.
 
 ```sql
-SELECT 
-    name,
-    CASE WHEN year_of_birth >= 2000 THEN 'young'
-            ELSE 'old' END AS age_group
-FROM persons;
+SELECT t.original_title,
+       t.year_of_start,
+       r.vote_cnt
+FROM   titles as t
+    LEFT JOIN ratings as r
+        ON t.id = r.title_id
+WHERE  r.avg_rating = 10
+ORDER BY r.vote_cnt desc;
 ```
 
 ## 9 задание 
 
-Вывести:
+Написать SQL-запрос, который выводит `id` произведений из таблицы `titles`, для которых нет записей в таблице `episodes`. Для этого объедините эти две таблицы по полю `title_id` и выберите те записи, для которых нет соответствий в таблице `episodes`.
 
-- поле `id` из таблицы `titles`;
-- номер символа с первым вхождением цифры 6 в поле `id` из таблицы `titles` (назовите поле `pos_numb`).
-
-```sql
-SELECT 
-    id,
-    position('6' in id::text) as pos_numb
-FROM titles;
-```
-
-## 10 задание 
-
-Вывести:
-
-- поле `original_title`;
-- поле `is_adult`;
-- поле `is_adult`, приведённое к целочисленному типу (назовите его `is_adult_int`).
+Результат отсортируйте по возрастанию `id`.
 
 ```sql
-SELECT
-    original_title,
-    is_adult,
-    is_adult::int as is_adult_int
-FROM titles;
+SELECT t.id
+FROM   titles as t
+    LEFT JOIN episodes as e
+        ON e.title_id = t.id
+WHERE  e.episode is null
+ORDER BY 1;
 ```
