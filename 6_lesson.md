@@ -1,216 +1,280 @@
 ## 1 задание 
 
-Написать SQL-запрос, который выведет названия сериалов, у которых первый эпизод первого сезона получил рейтинг 10.  
-Для выборки используйте таблицы `titles`, `ratings`, `episodes` и коррелированные подзапросы. 
+Написать SQL-запрос, который выведет:
 
-Результат отсортируйте в лексикографическом порядке.
+- название сериала;
+- название эпизода, для этого необходимо выполнить коррелированный подзапрос, обратившись к внешней таблице `episodes`;
+- номер сезона;
+- номер эпизода в сезоне;
+- сквозной номер (назовите поле `rn`).
+  
+Все названия хранятся в поле `original_title` таблицы `titles`. Партицирование сделайте по `id` названия сериала.
+
+Результат отсортируйте по возрастанию `serial_name`, `episode_name`, `season`, `episode`, `rn`.
 
 ```sql
-SELECT gr.name
-FROM   (SELECT (SELECT t.original_title
-                        FROM   titles as t
-                        WHERE  t.id = e.parent_id) as name, (SELECT r.avg_rating
-                                             FROM   ratings as r
-                                             WHERE  r.title_id = e.title_id) as avg_rating
-        FROM   episodes as e
-        WHERE  e.episode = 1
-           and e.season = 1) as gr
-WHERE  gr.avg_rating = 10
-   and name is not null
-ORDER BY 1;
+with cte as (SELECT t.original_title as serial_name,
+                    (SELECT t.original_title
+              FROM   titles as t
+              WHERE  t.id = e.title_id) as episode_name, e.parent_id, e.season, e.episode
+             FROM   episodes as e join titles as t
+                     ON t.id = e.parent_id)
+SELECT serial_name,
+       episode_name,
+       season,
+       episode,
+       row_number() OVER (PARTITION BY parent_id
+                          ORDER BY season, episode) as rn
+FROM   cte
+ORDER BY 1, 2, 3, 4, 5;
 ```
 
 ## 2 задание 
 
-Написать SQL-запрос, который выведет оригинальное название `(original_title)`, год начала `(year_of_start)` и количество эпизодов произведений, у которых больше 500 серий, отсортировав их по убыванию количества серий. Для этого используйте подзапрос к таблице `episodes` с группировкой по полю `parent_id`. Выведите только строки, которые есть в таблице `titles` и в сгруппированной таблице.
-Назовите поле с количеством эпизодов произведений `ep_cnt`. Отсортируйте результат по этому полю в порядке убывания.
+Написать SQL-запрос, который выведет количество умерших людей из таблицы `persons` для каждого года, начиная с 2000-го, накопленным итогом.
+Например, для 2012 года будет указано количество людей, которые ушли из жизни с 2000 по 2012 год.
+
+Поля к выводу: год `(year_of_death)`, кумулятивная сумма на этот год `(cume_cnt)`. Отсортируйте результат по их возрастанию.
 
 ```sql
-SELECT t.original_title,
-       t.year_of_start,
-       e.ep_cnt
-FROM   titles as t join (SELECT parent_id,
-                                count(1) as ep_cnt
-                         FROM   episodes as e
-                         GROUP BY parent_id having count(1) > 500) as e
-        ON t.id = e.parent_id
-ORDER BY ep_cnt desc;
+with death_stat as (SELECT year_of_death,
+                           count(1) as dead_cnt
+                    FROM   persons
+                    WHERE  year_of_death >= 2000
+                    GROUP BY year_of_death)
+SELECT year_of_death,
+       sum(dead_cnt) OVER (ORDER BY year_of_death) as cume_cnt
+FROM   death_stat
+ORDER BY 1, 2;
 ```
 
 ## 3 задание 
 
-Написать SQL-запрос, который выведет оригинальное название `(original_title)`, год начала `(year_of_start)` и количество человек в команде `(com_cnt)`, у которых команда больше 30 человек, отсортировав их по убыванию количества людей. Для этого используйте подзапрос к таблице `principals` с группировкой. Выведите только строки, которые есть в таблице `titles` и в сгруппированной таблице.
+Написать SQL-запрос, который выведет:
+
+- `year_of_start` из таблицы `titles`;
+- количество произведений по годам накопленным итогом, набравших максимальный средний рейтинг, равный 10.
+
+Для выполнения запроса используйте таблицы `titles` и `ratings`. Поля к выводу: год `(year_of_start)`, кумулятивная сумма `(cum_cnt)`. Отсортируйте результат по их возрастанию.
 
 ```sql
-SELECT t.original_title,
-       t.year_of_start,
-       e.com_cnt
-FROM   titles as t join (SELECT title_id,
-                                count(1) as com_cnt
-                         FROM   principals as e
-                         GROUP BY title_id having count(1) > 30) as e
-        ON t.id = e.title_id
-ORDER BY com_cnt desc;
+with cte as (SELECT year_of_start,
+                    count(1) as ten_cnt
+             FROM   titles as t join ratings as r
+                     ON t.id = r.title_id
+             WHERE  avg_rating = 10
+             GROUP BY year_of_start)
+SELECT year_of_start,
+       sum(ten_cnt) OVER (ORDER BY year_of_start) as cume_cnt
+FROM   cte
+ORDER BY 1, 2;
 ```
 
 ## 4 задание 
 
 Написать SQL-запрос, который выведет:
 
-- количество строк в таблице `titles`;
-- количество уникальных записей в поле `type` таблицы `titles`;
-- общее количество голосов `vote_cnt` в таблице `ratings`.
+- название сериала;
+- название эпизода;
+- номер сезона;
+- номер эпизода в сезоне;
+- максимальный рейтинг эпизодов до этой серии включительно.
+
+Серии с пустыми значениями сезона и эпизода показывать не нужно. Результат отсортируйте по всем колонкам в том порядке, в котором они расположены выше (сортировка в порядке возрастания).
 
 ```sql
-SELECT count(1) as title_cnt,
-       count(distinct type) as type_cnt,
-       (SELECT sum(vote_cnt)
- FROM   ratings) as sum_vote
-FROM   titles;
+with cte as (SELECT t.original_title as serial_name,
+             (SELECT t.original_title
+              FROM   titles as t
+              WHERE  t.id = e.title_id) as episode_name, e.parent_id, e.season, e.episode, r.avg_rating
+             FROM   episodes as e join ratings as r
+                     ON e.title_id = r.title_id join titles as t
+                     ON t.id = e.parent_id)
+SELECT serial_name,
+       episode_name,
+       season,
+       episode,
+       max(avg_rating) OVER (PARTITION BY parent_id
+                             ORDER BY season, episode) as max_rating
+FROM   cte
+WHERE  season is not null
+   and episode is not null
+ORDER BY 1, 2, 3, 4, 5;
 ```
 
 ## 5 задание 
 
-Написать SQL-запрос, который с помощью коррелированного подзапроса выведет:
+Вывести:
 
-- `id` и `original_title` из таблицы `titles`;
-- `avg_rating` из таблицы `ratings`, относящийся к строке из `titles`.
+- название сериала;
+- название эпизода;
+- номер сезона;
+- номер эпизода в сезоне;
+- количество голосов, отданных за сериал до текущего эпизода включительно (назовите поле `vote_cnt`).
 
-Результат отсортируйте по возрастанию `id`, `original_title`, `avg_rating`.
+Результат отсортируйте по возрастанию `serial_name`, `episode_name`, `season`, `episode`, `vote_cnt`.
 
 ```sql
-SELECT id,
-       original_title,
-       (SELECT avg_rating
- FROM   ratings as r
- WHERE  r.title_id = t.id)
-FROM   titles as t
-ORDER BY 1, 2, 3;
+WITH cte AS (
+    SELECT t.original_title AS serial_name,
+           (SELECT t.original_title FROM titles AS t WHERE t.id = e.title_id) AS episode_name,
+           e.parent_id, e.season, e.episode, r.vote_cnt
+      FROM episodes AS e
+      JOIN ratings AS r
+        ON e.title_id = r.title_id
+      JOIN titles AS t
+        ON t.id = e.parent_id)
+SELECT serial_name, episode_name, season, episode,
+       SUM(vote_cnt) OVER (PARTITION BY parent_id ORDER BY season, episode) AS vote_cnt
+  FROM cte
+ORDER BY 1, 2, 3, 4, 5;
 ```
 
 ## 6 задание 
 
-Написать SQL-запрос, который с помощью подзапроса в блоке `WHERE` выведет строку таблицы `titles`, у которой максимальный рейтинг (`avg_rating` из таблицы `ratings`) и максимальное количество голосов `(vote_cnt)` среди других произведений с тем же рейтингом.
+Вывести:
+
+- название сериала;
+- название эпизода;
+- номер сезона;
+- номер эпизода в сезоне;
+- расчетное поле: если предыдущий эпизод получил оценку хуже — `better`, если лучше — `worse`, если такую же — `the same`. Для первого эпизода значение принимается NULL. Назовите поле `mark`.
+
+Результат отсортируйте по возрастанию `serial_name`, `season`, `episode`,`episode_name`.
 
 ```sql
-SELECT *
-FROM   titles
-WHERE  id in (SELECT title_id
-              FROM   ratings
-              ORDER BY avg_rating desc, vote_cnt desc limit 1);           
+with cte as (SELECT t.original_title as serial_name,
+                    (SELECT t.original_title
+              FROM   titles as t
+              WHERE  t.id = e.title_id) as episode_name, e.season, e.episode, r.avg_rating, lag(avg_rating)
+             OVER (
+             PARTITION BY parent_id
+             ORDER BY season, episode) as prev_rating
+             FROM   episodes as e join ratings as r
+                     ON e.title_id = r.title_id join titles as t
+                     ON t.id = e.parent_id)
+SELECT serial_name,
+       episode_name,
+       season,
+       episode,
+       case when prev_rating is null then null
+            when prev_rating < avg_rating then 'better'
+            when prev_rating = avg_rating then 'the same'
+            else 'worse' end as mark
+FROM   cte
+ORDER BY serial_name, season, episode, episode_name;        
 ```
 
 ## 7 задание 
 
-Написать написать SQL-запрос, который выведет название `(original_title)` произведения с максимальной продолжительностью. 
-Если таких произведений несколько, то выведите все.
+Вывести:
+
+- название сериала;
+- название эпизода;
+- номер сезона;
+- номер эпизода в сезоне;
+- ранг эпизода с пропусками по убыванию среднего рейтинга (назовите поле `rnk`).
+
+Результат отсортируйте по возрастанию `serial_name`, `season`, `episode`, `episode_name`.
 
 ```sql
-SELECT original_title
-FROM   titles
-WHERE  run_time = (SELECT max(titles.run_time)
-                   FROM   titles);
+with cte as (SELECT t.original_title as serial_name,
+                    (SELECT t.original_title
+              FROM   titles as t
+              WHERE  t.id = e.title_id) as episode_name, e.parent_id, e.season, e.episode, r.avg_rating
+             FROM   episodes as e join ratings as r
+                     ON e.title_id = r.title_id join titles as t
+                     ON t.id = e.parent_id)
+SELECT serial_name,
+       episode_name,
+       season,
+       episode,
+       rank() OVER (PARTITION BY parent_id ORDER BY avg_rating desc) as rnk
+FROM   cte
+ORDER BY serial_name, season, episode, episode_name;
 ```
 
 ## 8 задание 
 
-Написать SQL-запрос, который выведет названия `(original_title)` произведений, продолжительностью между `floor` и `ceil` средней продолжительности произведений в таблице `titles`.
+Вывести:
 
-Результат отсортируйте по возрастанию `original_title`.
+- название сериала;
+- название эпизода;
+- номер сезона;
+- номер эпизода в сезоне;
+- рейтинг этого эпизода;
+- максимальный рейтинг эпизодов среди последних 3 эпизодов, включая текущий (назовите поле `max_rating`).
+
+Результат отсортируйте по возрастанию `serial_name`, `season`, `episode`, `episode_name`.
 
 ```sql
-SELECT original_title
-FROM   titles
-WHERE  run_time between (SELECT floor(avg(titles.run_time))
-                         FROM   titles) and (SELECT ceil(avg(titles.run_time))
-                    FROM   titles)
-ORDER BY 1;
+with cte as (SELECT t.original_title as serial_name,
+                    (SELECT t.original_title
+              FROM   titles as t
+              WHERE  t.id = e.title_id) as episode_name, e.parent_id, e.season, e.episode, r.avg_rating
+             FROM   episodes as e join ratings as r
+                     ON e.title_id = r.title_id join titles as t
+                     ON t.id = e.parent_id)
+SELECT serial_name,
+       episode_name,
+       season,
+       episode,
+       avg_rating,
+       max(avg_rating) OVER (PARTITION BY parent_id
+                             ORDER BY season, episode rows between 2 preceding and current row) as max_rating
+FROM   cte
+ORDER BY serial_name, season, episode, episode_name;
 ```
 
 ## 9 задание 
 
-Выберите имена (без фамилий) из таблицы `persons`, которых в таблице `persons` больше 1000. Выведите строки из таблицы `persons` про людей с такими именами.
+Напишите SQL-запрос, который выведет количество умерших людей из таблицы `persons` для каждого года, начиная с 2000-го, накопленным итогом для текущего года и всех последующих лет. Например, для 2012 года будет указано количество людей, которые ушли из жизни с 2012 по 2024 год.
+Поля к выводу: год `(year_of_death)`, кумулятивная сумма на этот год `(cume_cnt)`.
 
-Результат отсортируйте по возрастанию `id`.
+Результат отсортируйте по возрастанию `year_of_death`, `cume_cnt`.
 
 ```sql
-SELECT *
-FROM   persons
-WHERE  split_part(name, ' ', 1) in (SELECT split_part(name, ' ', 1)
-                                    FROM   persons
-                                    WHERE  position(' ' in name) > 0
-                                    GROUP BY 1 having count(1) > 1000)
-ORDER BY 1;
+with death_stat as (SELECT year_of_death,
+                           count(1) as dead_cnt
+                    FROM   persons
+                    WHERE  year_of_death >= 2000
+                    GROUP BY year_of_death)
+SELECT year_of_death,
+       sum(dead_cnt) OVER (ORDER BY year_of_death rows between current row and unbounded following) as cume_cnt
+FROM   death_stat
+ORDER BY 1, 2;
 ```
 
 ## 10 задание 
 
-Написать SQL-запрос, который выведет тип `(type)`, оригинальное название `(original_title)`, год выпуска `(year_of_start)` и жанр `(genres)` произведений для взрослых `(is_adult)`, отсортировав их по убыванию рейтинга `(avg_rating в таблице ratings)`. Для этого используйте коррелированный подзапрос в секции сортировки.
+Вывести:
+
+- название сериала;
+- название эпизода;
+- номер сезона;
+- номер эпизода в сезоне;
+- сквозной номер (назовите поле `num`);
+- максимальный рейтинг эпизодов до этой серии включительно;
+- количество голосов, отданных за сериал до этой серии включительно (назовите поле `vote_cnt`).
+
+Используйте `Window Frame`.
 
 ```sql
-SELECT type,
-       original_title,
-       year_of_start,
-       genres
-FROM   titles as t
-WHERE  is_adult
-ORDER BY (SELECT avg_rating
-          FROM   ratings as r
-          WHERE  r.title_id = t.id) desc;
-```
-
-## 11 задание 
-
-Написать SQL-запрос, который выведет имена людей (поле `name` из таблицы `persons`), которые судя по таблице `principals` участвовали в создании 10 самых высокооценённых произведений (максимум голосов среди тех, кто набрал максимальный рейтинг `(avg_rating)` из таблицы `ratings`). Итоговый результат отсортируйте по `name`.
-
-```sql
-WITH the_best_id as (SELECT title_id
-                     FROM   ratings
-                     ORDER BY avg_rating desc, vote_cnt desc limit 10), prin as (SELECT person_id
-                                                            FROM   principals
-                                                            WHERE  title_id in (SELECT title_id
-                                                                                FROM   the_best_id))
-SELECT name
-FROM   persons
-WHERE  id in (SELECT person_id
-              FROM   prin)
-ORDER BY name;
-```
-
-## 12 задание 
-
-Перепишите SQL-запрос из первого задания с использованием `CTE`. Запрос выводит названия `(original_name)` сериалов, у которых первый эпизод первого сезона получил рейтинг 10. Назовите результирующее поле `name` и отсортируйте результат по его возрастанию.
-
-```sql
-WITH cte as (SELECT (SELECT t.original_title
-                                  FROM   titles as t
-                                  WHERE  t.id = e.parent_id) as name, (SELECT r.avg_rating
-                                                  FROM   ratings as r
-                                                  WHERE  r.title_id = e.title_id) as avg_rating
-             FROM   episodes as e
-             WHERE  e.episode = 1
-                and e.season = 1)
-SELECT name
-FROM   cte
-WHERE  avg_rating = 10
-   and name is not null
-ORDER BY name;
-```
-
-## 13 задание 
-
-Перепишите SQL-запрос из второго задания с использованием `CTE`. Запрос выводит оригинальное название `(original_title)`, год начала `(year_of_start)` и количество эпизодов произведений `(ep_cnt)`, у которых больше 500 серий, отсортировав их по убыванию количества серий. 
-Выводятся только те строки, которые есть в таблице `titles` и в сгруппированной таблице.
-
-```sql
-WITH cte as (SELECT parent_id,
-                    count(1) as ep_cnt
-             FROM   episodes as e
-             GROUP BY parent_id having count(1) > 500)
-SELECT t.original_title,
-       t.year_of_start,
-       cte.ep_cnt
-FROM   titles as t join cte
-        ON t.id = cte.parent_id
-ORDER BY ep_cnt desc;
+with cte as (SELECT t.original_title as serial_name,
+                    (SELECT t.original_title
+              FROM   titles as t
+              WHERE  t.id = e.title_id) as episode_name, e.parent_id, e.season, e.episode, r.avg_rating, r.vote_cnt
+             FROM   episodes as e join ratings as r
+                     ON e.title_id = r.title_id join titles as t
+                     ON t.id = e.parent_id)
+SELECT serial_name,
+       episode_name,
+       season,
+       episode,
+       row_number() OVER w as num,
+       max(avg_rating) OVER w as max_rating,
+       sum(vote_cnt) OVER w as vote_cnt
+FROM   cte window w as (
+PARTITION BY parent_id
+ORDER BY season, episode);
 ```
