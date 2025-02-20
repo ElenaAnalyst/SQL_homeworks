@@ -1,4 +1,4 @@
-## В этом блоке представлены мои решения задач по следующим темам:
+## В этом блоке представлены мои запросы к базе данных, которые разделены на следующие блоки:
 
 * [Типы данных и функции преобразований](https://github.com/ElenaAnalyst/SQL_homeworks/blob/main/1_lesson.md)
 * [Фильтрация и сортировка данных](https://github.com/ElenaAnalyst/SQL_homeworks/blob/main/2_lesson.md)
